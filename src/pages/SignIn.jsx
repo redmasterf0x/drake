@@ -22,22 +22,21 @@ export default function SignIn() {
       setErrorMsg(error.message)
       return
     }
-    // If we have pending signup info (from initial signup), apply it to the user metadata now
+    // If we have pending signup info (from initial signup), create/update profile in profiles table
     try {
       const pending = localStorage.getItem('pendingSignup')
-      if (pending) {
+      if (pending && data.user) {
         const p = JSON.parse(pending)
-        const meta = {}
-        if (p.firstName) meta.first_name = p.firstName
-        if (p.lastName) meta.last_name = p.lastName
-        if (p.displayName) meta.display_name = p.displayName
-        if (Object.keys(meta).length > 0) {
-          await supabase.auth.updateUser({ data: meta })
-        }
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          first_name: p.firstName || null,
+          last_name: p.lastName || null,
+          display_name: p.displayName || null,
+        })
         localStorage.removeItem('pendingSignup')
       }
     } catch (err) {
-      console.error('Failed to apply pending signup metadata', err)
+      console.error('Failed to create/update profile', err)
     }
 
     navigate('/dashboard')

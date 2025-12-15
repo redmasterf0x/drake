@@ -3,21 +3,36 @@ import { supabase } from '../supabaseClient'
 
 export default function Dashboard({ session }) {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [uploading, setUploading] = useState(false)
-
-  function avatarUrlFromUser(u) {
-    return u?.user_metadata?.avatar_url || u?.user_metadata?.avatar || ''
-  }
 
   useEffect(() => {
     let mounted = true
     async function load() {
-      if (session?.user) {
-        setUser(session.user)
-      } else {
-        const { data } = await supabase.auth.getUser()
+      try {
+        let authUser
+        if (session?.user) {
+          authUser = session.user
+        } else {
+          const { data } = await supabase.auth.getUser()
+          authUser = data.user
+        }
         if (!mounted) return
-        setUser(data.user)
+        setUser(authUser)
+
+        // Load profile from profiles table
+        if (authUser?.id) {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single()
+          if (!error && profileData) {
+            setProfile(profileData)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load user/profile', err)
       }
     }
     load()
@@ -44,12 +59,20 @@ export default function Dashboard({ session }) {
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
       const publicUrl = urlData?.publicUrl || ''
 
-      // Save avatar URL to user metadata
-      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } })
+      // Save avatar URL to profiles table
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (updateError) throw updateError
 
-      // Refresh user info
-      const { data: refreshed } = await supabase.auth.getUser()
-      setUser(refreshed.user)
+      // Refresh profile info
+      const { data: refreshed } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      if (refreshed) setProfile(refreshed)
     } catch (err) {
       console.error('Upload error', err)
       alert('Failed to upload avatar: ' + err.message)
@@ -61,18 +84,20 @@ export default function Dashboard({ session }) {
   return (
     <div style={{ padding: 20 }}>
       <h2>Dashboard</h2>
-      {user ? (
+      {user && profile ? (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div>
-              {avatarUrlFromUser(user) ? (
-                <img src={avatarUrlFromUser(user)} alt="avatar" width={72} height={72} style={{ borderRadius: 8 }} />
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="avatar" width={72} height={72} style={{ borderRadius: 8 }} />
               ) : (
                 <div style={{ width: 72, height: 72, background: '#ddd', borderRadius: 8 }} />
               )}
             </div>
             <div>
-              <p style={{ margin: 0 }}>{user.user_metadata?.display_name || user.email}</p>
+              <p style={{ margin: 0 }}>
+                {profile.display_name || `${profile.first_name} ${profile.last_name}`.trim() || user.email}
+              </p>
               <p style={{ margin: 0, fontSize: 12, color: '#666' }}>{user.email}</p>
             </div>
           </div>
@@ -89,7 +114,7 @@ export default function Dashboard({ session }) {
           </div>
         </div>
       ) : (
-        <p>Loading user...</p>
+        <p>Loading profile...</p>
       )}
     </div>
   )
