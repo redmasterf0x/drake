@@ -29,6 +29,7 @@ export default function SignIn() {
         const p = JSON.parse(pending)
         await supabase.from('profiles').upsert({
           id: data.user.id,
+          email: data.user.email,
           first_name: p.firstName || null,
           last_name: p.lastName || null,
           display_name: p.displayName || null,

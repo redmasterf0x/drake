@@ -86,6 +86,10 @@ export default function Dashboard({ session }) {
       <h2>Dashboard</h2>
       {user && profile ? (
         <div>
+          <div style={{ marginBottom: 12 }}>
+            <a href="/profile">Profile</a> · <a href="/articles">Articles</a> · <a href="/calendar">Calendar</a>
+            {profile.is_admin ? <span> · <a href="/admin">Admin</a></span> : null}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div>
               {profile.avatar_url ? (

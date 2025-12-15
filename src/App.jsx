@@ -35,6 +35,10 @@ export default function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/confirm" element={<Confirm />} />
+      <Route path="/profile" element={<ProtectedRoute session={session}><Profile /></ProtectedRoute>} />
+      <Route path="/articles" element={<ProtectedRoute session={session}><Articles /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute session={session}><Calendar /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute session={session}><AdminPanel /></ProtectedRoute>} />
       <Route
         path="/dashboard"
         element={
